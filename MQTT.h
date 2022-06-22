@@ -1,9 +1,11 @@
 #ifndef MQTT_h
 #define MQTT_h
 
+#include "DigitalOut.h"
 #include "NetworkInterface.h"
 #include "SocketAddress.h"
 #include "TCPSocket.h"
+#include "mbed.h"
 
 #define MQTTCONNECT     0x10    // Client request to connect to Server
 #define MQTTCONNACK     0x20    // Connect Acknowledgment
@@ -44,6 +46,8 @@ class MQTTclient {
     bool connect(const char*);
     bool receive_response();
     bool receive_response(uint8_t);
+    bool receive_response(char* topic, char* payload);
+    bool receive_response(uint8_t, char*, char*);
     bool publish(const char* , const char*);
     bool subscribe(const char*);
     uint32_t ping();

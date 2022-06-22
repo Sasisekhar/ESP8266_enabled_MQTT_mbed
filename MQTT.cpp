@@ -1,9 +1,12 @@
 #include "MQTT.h"
 #include "Callback.h"
+#include "DigitalOut.h"
+#include "PinNameAliases.h"
 #include "PinNames.h"
 #include "ThisThread.h"
 #include "mbed.h"
 #include "mbed_assert.h"
+#include "nsapi_types.h"
 #include "thread_network_data_lib.h"
 #include "us_ticker_api.h"
 #include <cstdint>
@@ -144,6 +147,15 @@ bool MQTTclient::receive_response() {
 }
 
 bool MQTTclient::receive_response(uint8_t check) {
+
+    return receive_response(check, NULL, NULL);
+}
+
+bool MQTTclient::receive_response(char* topic, char* payload) {
+    return receive_response(NULL, topic, payload);
+}
+
+bool MQTTclient::receive_response(uint8_t check, char* topic, char* payload) {
     uint8_t buffer[128];
 
     _result = this->_socket.recv(buffer, 128);
@@ -184,7 +196,11 @@ bool MQTTclient::receive_response(uint8_t check) {
         tempBuff[index] = '\0';
         strcpy(this->_global._payload,  (const char*) tempBuff);
 
-        printf("Message: %s received on topic: %s\n", this->_global._payload, this->_global._topic);
+        // printf("Message: %s received on topic: %s\n", this->_global._payload, this->_global._topic);
+
+        strcpy(payload, _global._payload);
+        strcpy(topic, _global._topic);
+
         return true;
     } else if(check) {
         if(buffer[0] == check) {
@@ -322,7 +338,7 @@ bool MQTTclient::disconnect() {
     _interface->disconnect();
 
     // printf("sent %d bytes\n", bytes_sent);
-    printf("Netwrok Disconnected\n");
+    printf("Network Disconnected\n");
     return true;
 
 }
@@ -332,7 +348,7 @@ uint32_t MQTTclient::ping() {
     _socket.send(buffer, 2);
 
     int time = us_ticker_read()/1000;
-    while((buffer[0] != MQTTPINGRESP) && (us_ticker_read()/1000 - time) <= 5000){
+    while((buffer[0] != MQTTPINGRESP) && (us_ticker_read()/1000 - time) <= 10000){
         _result = this->_socket.recv(buffer, 2);
     }
 

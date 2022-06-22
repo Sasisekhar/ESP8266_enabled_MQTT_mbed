@@ -1,4 +1,5 @@
 #include "BufferedSerial.h"
+#include "DigitalIn.h"
 #include "DigitalOut.h"
 #include "NetworkInterface.h"
 #include "PinNameAliases.h"
@@ -10,6 +11,7 @@
 #include "mbed.h"
 #include "ESP8266Interface.h"
 #include "MQTT.h"
+#include <cstring>
 // main() runs in its own thread in the OS
 
 namespace arduino{
@@ -18,17 +20,20 @@ namespace arduino{
     }
 }
 
-int main() {
+DigitalOut led1(D12);
+DigitalOut led2(D13);
 
-    DigitalOut button(BUTTON1);
+int main() {
+    led1 = false;
+    led2 = false;
+
+    DigitalIn button(BUTTON1);
 
     ESP8266Interface WiFi(D1, D0);
 
     WiFi.set_credentials((const char*)"Sx3K", (const char*)"golikuttan7577", NSAPI_SECURITY_WPA_WPA2);
-    // WiFi.set_credentials((const char*)"ARSLAB", (const char*)"3928DC6C25", NSAPI_SECURITY_WEP);
+    // WiFi.set_credentials((const char*)"ARS-LAB", (const char*)"3928DC6C25", NSAPI_SECURITY_WEP);
 
-    //WiFi.connect("ARSLAB", "3928DC6C25", NSAPI_SECURITY_WEP);
-    // WiFi.connect("Sx3K", "golikuttan7577");
     WiFi.connect();
     printf("Connecting");
     while(WiFi.get_connection_status() == NSAPI_STATUS_CONNECTING){
@@ -42,7 +47,8 @@ int main() {
 
     SocketAddress address;
     WiFi.gethostbyname("broker.hivemq.com", &address);
-    //address.set_ip_address(address);
+    // address.set_ip_address("134.117.52.253\0");  //My laptop
+    // address.set_ip_address("134.117.52.231\0");     //My workstation
     address.set_port(1883);
 
     MQTTclient client(&WiFi, address);
@@ -64,6 +70,9 @@ int main() {
     }
 
     uint64_t startTime = 0;
+    char topic[128];
+    char message[128];
+
     while (true) {
 
         if(!client.connected()) {
@@ -73,7 +82,7 @@ int main() {
             }
         }
 
-        if(arduino::millis() -  startTime > 500) {
+        if(arduino::millis() -  startTime > 1000) {
             int temp = rand()%50;
             int hum = rand()%100;
             int co2 = rand()%5000;
@@ -86,12 +95,28 @@ int main() {
             startTime = arduino::millis();
         }
 
-        client.receive_response();
+        if(client.receive_response(topic, message)) {
+            //printf("Message: %s received on topic: %s\n", message, topic);
 
-        if(button) {
+            if(!strcmp(topic, (char*) "ARSLAB/Control/Door")) {
+                if(!strcmp(message, (char*) "1")) {
+                    led1 = true;
+                } else {
+                    led1 = false;
+                }
+            } else if (!strcmp(topic, (char*) "ARSLAB/Control/Light")) {
+                if(!strcmp(message, (char*) "1")) {
+                    led2 = true;
+                } else {
+                    led2 = false;
+                }
+            }
+        }
+
+        if(!button) {
             client.ping();
             ThisThread::sleep_for(500ms);
-            if(button){
+            if(!button){
                 break;
             }
         }
